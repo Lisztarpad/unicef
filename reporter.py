@@ -14,7 +14,7 @@ st.set_page_config(page_title="RAS Monitoring Report Analysis", layout="wide")
 
 
 # ==========================================
-# 🌟 新增：全局数据下钻弹窗组件
+# 🌟 全局数据下钻弹窗组件
 # ==========================================
 @st.dialog("📋 Drill-down Details", width="large")
 def show_drilldown_modal(msg, df):
@@ -124,7 +124,7 @@ def filter_current_period(df_valid, date_col, period_type):
 
 
 # ==========================================
-# 各模块数据处理函数... (保持不变)
+# 各模块数据处理函数
 # ==========================================
 def process_va_email_sent(df, period_type='Weekly'):
     required_columns = ["Name of Agent (VA)", "VA E-mail sent", "JPR"]
@@ -284,20 +284,22 @@ def process_awaiting_publish(df):
             lambda x: ', '.join(x.dropna().astype(str))).reset_index()
         display_rows = []
         for agent in agent_totals.index:
-            display_rows.append({'Row Labels': agent, col_name: f"{agent_totals[agent]} (Total)"})
+            # 🌟🌟🌟 这里修改了 Row Labels 为 Agent / Date 🌟🌟🌟
+            display_rows.append({'Agent / Date': agent, col_name: f"{agent_totals[agent]} (Total)"})
             agent_dates = detail_jprs[detail_jprs['Name of Agent (VA)'] == agent].sort_values('Date_Only')
             for _, row in agent_dates.iterrows():
-                display_rows.append({'Row Labels': f"　　{row['Formatted_Date']}", col_name: row['JPR']})
-        display_rows.append({'Row Labels': 'Grand Total', col_name: f"{df_sub['JPR'].count()} (Total)"})
+                display_rows.append({'Agent / Date': f"　　{row['Formatted_Date']}", col_name: row['JPR']})
+        display_rows.append({'Agent / Date': 'Grand Total', col_name: f"{df_sub['JPR'].count()} (Total)"})
         display_df = pd.DataFrame(display_rows)
 
         def style_flat(x):
             c = pd.DataFrame('', index=x.index, columns=x.columns)
-            agent_mask = ~x['Row Labels'].str.startswith('　　')
-            c.loc[agent_mask, 'Row Labels'] = 'font-weight: bold; background-color: #f8f9fa;'
+            # 🌟🌟🌟 样式匹配也同步修改为 Agent / Date 🌟🌟🌟
+            agent_mask = ~x['Agent / Date'].str.startswith('　　')
+            c.loc[agent_mask, 'Agent / Date'] = 'font-weight: bold; background-color: #f8f9fa;'
             c.loc[agent_mask, col_name] = 'font-weight: bold; background-color: #f8f9fa;'
-            gt_mask = x['Row Labels'] == 'Grand Total'
-            c.loc[gt_mask, 'Row Labels'] = 'font-weight: bold; background-color: #EAEAEA;'
+            gt_mask = x['Agent / Date'] == 'Grand Total'
+            c.loc[gt_mask, 'Agent / Date'] = 'font-weight: bold; background-color: #EAEAEA;'
             c.loc[gt_mask, col_name] = 'font-weight: bold; background-color: #EAEAEA;'
             return c
 
@@ -586,12 +588,11 @@ def process_ras_kpi(df, period_type='Weekly'):
 
 
 # ==========================================
-# 🌟 新增：生成带格式的多 Sheet Excel 报告核心引擎
+# 🌟 生成带格式的多 Sheet Excel 报告核心引擎
 # ==========================================
 @st.cache_data(show_spinner=False)
 def create_excel_report(df, period_options, small_table_options):
     output = io.BytesIO()
-    # 强制使用 xlsxwriter 引擎以支持 DataFrame Styler 的 CSS 解析
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook = writer.book
         title_format = workbook.add_format({'bold': True, 'font_size': 13, 'bg_color': '#D9E1F2', 'border': 1})
@@ -610,34 +611,28 @@ def create_excel_report(df, period_options, small_table_options):
 
                 if isinstance(item, tuple):
                     styler, data_df = item[0], item[1]
-                elif hasattr(item, 'data'):  # Is Styler
+                elif hasattr(item, 'data'):
                     styler, data_df = item, item.data
-                else:  # Is DataFrame
+                else:
                     styler, data_df = item.style, item
 
                 if styler is None or data_df is None or data_df.empty:
                     continue
 
-                # 写标题
                 worksheet.write_string(startrow, 0, title, title_format)
                 startrow += 2
 
-                # 写入带有 CSS 格式的 Styler (Pandas 会自动将其转为 Excel 颜色)
                 styler.to_excel(writer, sheet_name=sheet_name, startrow=startrow, index=False)
 
-                # 计算并记录此 Sheet 每一列的最大字符宽度
                 for i, col in enumerate(data_df.columns):
-                    # 取列头和该列内容的最大长度 (防止遇到空数据报错)
                     max_len = max(data_df[col].astype(str).map(len).max() if not data_df.empty else 0, len(str(col)))
                     col_widths[i] = max(col_widths.get(i, 0), max_len)
 
-                startrow += len(data_df.index) + 3  # 加 3 行空隙给下一个表格
+                startrow += len(data_df.index) + 3
 
-            # 统一应用列宽调节 (加 3 个字符作为留白)
             for i, width in col_widths.items():
                 worksheet.set_column(i, i, width + 3)
 
-        # ====== 生成 VA 标签页 ======
         styled_va_email, _, _ = process_va_email_sent(df, period_options)
         result_pub = process_va_published(df, period_options, small_table_options)
         awaiting_va = process_awaiting_publish(df)
@@ -655,7 +650,6 @@ def create_excel_report(df, period_options, small_table_options):
             ])
         write_section("VA", va_sections)
 
-        # ====== 生成 LL 标签页 ======
         result_ll_email = process_ll_email_sent(df, period_options, small_table_options)
         styled_ll_rel, _, _ = process_ll_released(df, period_options)
         result_awaiting_ll = process_awaiting_ll(df)
@@ -668,7 +662,6 @@ def create_excel_report(df, period_options, small_table_options):
         ]
         write_section("LL", ll_sections)
 
-        # ====== 生成 OC 标签页 ======
         result_oc = process_oc_creation(df, period_options, small_table_options)
         oc_sections = [
             ("1. OC SLA Meeting Rate", result_oc[3] if result_oc else None),
@@ -677,7 +670,6 @@ def create_excel_report(df, period_options, small_table_options):
         ]
         write_section("OC", oc_sections)
 
-        # ====== 生成 FC 标签页 ======
         result_fc = process_fc_request(df, period_options, small_table_options)
         fc_sections = [
             ("1. FC SLA Meeting Rate", result_fc[3] if result_fc else None),
@@ -686,7 +678,6 @@ def create_excel_report(df, period_options, small_table_options):
         ]
         write_section("FC", fc_sections)
 
-        # ====== 生成 KPI 标签页 ======
         result_kpi = process_ras_kpi(df, period_options)
         kpi_sections = [
             ("1. End-to-End Processing Time Analysis", result_kpi[0] if result_kpi else None)
@@ -697,29 +688,29 @@ def create_excel_report(df, period_options, small_table_options):
 
 
 # ==========================================
-# 主应用入口
+# 🌟 重构后的主应用入口 (使用 st.navigation 原生多页面)
 # ==========================================
 def main():
+    # 注入全局 CSS 样式
     st.markdown(
         """
         <style>
-            [data-testid="stSidebar"] { min-width: 200px !important; max-width: 200px !important; }
-            [data-testid="stSidebarContent"] { display: flex !important; flex-direction: column !important; justify-content: center !important; }
-            [data-testid="stSidebarHeader"] { display: none !important; }
-            [data-testid="stSidebarContent"] div[role="radiogroup"] { gap: 1.5rem !important; padding-left: 20px !important; }
-            [data-testid="stSidebarContent"] div[role="radiogroup"] label { font-size: 1.3rem !important; font-weight: bold !important; }
+            .block-container {
+                padding-top: 1rem !important;
+                padding-bottom: 4rem !important;
+                padding-left: 2.5rem !important; 
+                padding-right: 2.5rem !important;
+            }
         </style>
         """,
         unsafe_allow_html=True
     )
 
+
     st.title("📊 RAS Monitoring Report Analysis")
     st.markdown("Upload your data source (Excel file) to generate reports for VA, LL, OC, FC, and RAS-KPI.")
-
-    with st.sidebar:
-        selected_nav = st.radio("Navigation", ["VA", "LL", "OC", "FC", "RAS-KPI"], label_visibility="collapsed")
-
-    uploaded_file = st.file_uploader("Upload Data Source (.xlsx)", type=["xlsx"])
+    st.markdown("---")
+    uploaded_file = st.sidebar.file_uploader("Upload Data Source (.xlsx)", type=["xlsx"])
     period_options = ["Weekly", "Monthly", "Quarterly", "Yearly"]
     small_table_options = ["Last 4 Weeks", "Current Quarter", "Current Year"]
 
@@ -728,13 +719,12 @@ def main():
             with st.spinner("Reading data..."):
                 df = load_data(uploaded_file)
 
-            # 🌟 新增：Excel 导出控制区
+            # Excel 导出控制区
             st.sidebar.markdown("---")
             st.sidebar.markdown("### 📥 Export Report")
             export_period = st.sidebar.selectbox("Main Table Time:", period_options, index=0)
             export_small = st.sidebar.selectbox("SLA Table Time:", small_table_options, index=0)
 
-            # 静默生成带有样式的 Excel 二进制数据
             excel_data = create_excel_report(df, export_period, export_small)
 
             st.sidebar.download_button(
@@ -746,10 +736,10 @@ def main():
                 use_container_width=True
             )
 
-            # --------------------------
-            # 模块 1: VA
-            # --------------------------
-            if selected_nav == "VA":
+            # =====================================
+            # 🌟 模块 1: VA
+            # =====================================
+            def page_va():
                 st.header("Vacancy Announcement (VA) Reports")
                 st.subheader("1. VA E-mail Sent")
                 period_va_email = st.radio("Main Table Time Grouping:", period_options, horizontal=True,
@@ -914,10 +904,10 @@ def main():
                                                                                                                               'total'][
                                                                                                                               1]) * 35) + 40)
 
-            # --------------------------
-            # 模块 2: LL
-            # --------------------------
-            elif selected_nav == "LL":
+            # =====================================
+            # 🌟 模块 2: LL
+            # =====================================
+            def page_ll():
                 st.header("Longlist QA Mannual Check (LL) Reports")
                 st.subheader("1. LL E-mail Sent (Excluding 'Deputy')")
 
@@ -1091,14 +1081,14 @@ def main():
                                 f"💡 Showing raw data for Agent: **{selected_agent}** | Due Date: **{col_name}**",
                                 drill_df_awaiting)
 
-            # --------------------------
-            # 模块 3: OC
-            # --------------------------
-            elif selected_nav == "OC":
+            # =====================================
+            # 🌟 模块 3: OC
+            # =====================================
+            def page_oc():
                 st.header("Offer Creation (OC) Reports")
                 st.subheader("1. Offer Creation Volume & Processing Time")
 
-                col_ctrl_oc_left, col_ctrl_oc_right = st.columns([4, 6])
+                col_ctrl_oc_left, col_ctrl_oc_right = st.columns([3, 7])
                 with col_ctrl_oc_left:
                     small_oc_pub = st.radio("SLA & Proc. Time Grouping:", small_table_options, horizontal=True,
                                             key="oc_pub_small")
@@ -1110,7 +1100,7 @@ def main():
                 if result_oc_pub[0] is not None:
                     styled_oc_pub, raw_pivot_oc_pub, df_valid_oc_pub, sla_styler_oc, sla_pivot_oc, proc_styler_oc, proc_pivot_oc, date_range_str_oc, df_recent_4w_oc = result_oc_pub
 
-                    col_left_oc, col_right_oc = st.columns([4, 6])
+                    col_left_oc, col_right_oc = st.columns([3, 7])
                     with col_left_oc:
                         st.markdown(f"**OC SLA Meeting Rate ({date_range_str_oc})**")
                         event_sla_oc = st.dataframe(sla_styler_oc, use_container_width=True, hide_index=True,
@@ -1196,14 +1186,14 @@ def main():
                                 f"💡 Showing **Offer Creation** data for: **{agent}** | Time Group: **{col_name}**",
                                 drill_df_oc)
 
-            # --------------------------
-            # 模块 4: FC
-            # --------------------------
-            elif selected_nav == "FC":
+            # =====================================
+            # 🌟 模块 4: FC
+            # =====================================
+            def page_fc():
                 st.header("Funding Check (FC) Reports")
                 st.subheader("1. Funding Check Volume & Processing Time")
 
-                col_ctrl_fc_left, col_ctrl_fc_right = st.columns([4, 6])
+                col_ctrl_fc_left, col_ctrl_fc_right = st.columns([3, 7])
                 with col_ctrl_fc_left:
                     small_fc_req = st.radio("SLA & Proc. Time Grouping:", small_table_options, horizontal=True,
                                             key="fc_req_small")
@@ -1215,7 +1205,7 @@ def main():
                 if result_fc_req[0] is not None:
                     styled_fc_req, raw_pivot_fc_req, df_valid_fc_req, sla_styler_fc, sla_pivot_fc, proc_styler_fc, proc_pivot_fc, date_range_str_fc, df_recent_4w_fc = result_fc_req
 
-                    col_left_fc, col_right_fc = st.columns([4, 6])
+                    col_left_fc, col_right_fc = st.columns([3, 7])
                     with col_left_fc:
                         st.markdown(f"**FC SLA Meeting Rate ({date_range_str_fc})**")
                         event_sla_fc = st.dataframe(sla_styler_fc, use_container_width=True, hide_index=True,
@@ -1301,10 +1291,10 @@ def main():
                                 f"💡 Showing **Funding Check** data for: **{agent}** | Time Group: **{col_name}**",
                                 drill_df_fc)
 
-            # --------------------------
-            # 模块 5: KPI
-            # --------------------------
-            elif selected_nav == "RAS-KPI":
+            # =====================================
+            # 🌟 模块 5: KPI
+            # =====================================
+            def page_kpi():
                 st.header("RAS Key Performance Indicators (KPI)")
                 st.subheader("1. End-to-End Processing Time Analysis")
 
@@ -1354,12 +1344,29 @@ def main():
                             show_drilldown_modal(f"💡 Showing raw data for Time Group: **{selected_time_group}**",
                                                  drill_df_kpi)
 
+            # =====================================
+            # 🌟 注册并启动原生导航
+            # =====================================
+            pg = st.navigation(
+                [
+                    st.Page(page_va, title="VA", icon="📊"),
+                    st.Page(page_ll, title="LL", icon="📋"),
+                    st.Page(page_oc, title="OC", icon="📝"),
+                    st.Page(page_fc, title="FC", icon="💰"),
+                    st.Page(page_kpi, title="RAS-KPI", icon="🎯")
+                ]
+            )
+            pg.run()
+
         except Exception as e:
             st.error(f"An error occurred while processing the file: {e}")
 
+    else:
+        st.info("👈 Please upload your Excel data source in the sidebar to begin.")
+
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: center; color: gray; font-size: 14px; margin-top: 20px;'>&copy; 2026 Li Zihan. All rights reserved. <br><span style='font-size: 12px;'>RAS Monitoring Report Analysis Dashboard v2.0</span></div>",
+        "<div style='text-align: center; color: gray; font-size: 14px; margin-top: 1px;'>&copy; 2026 Li Zihan. All rights reserved. <br><span style='font-size: 12px;'>RAS Monitoring Report Analysis Dashboard v2.0</span></div>",
         unsafe_allow_html=True)
 
 
