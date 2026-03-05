@@ -8,7 +8,10 @@ from openpyxl.utils import get_column_letter
 # Set page configuration
 st.set_page_config(page_title="RAS Anomaly Cases Detector", layout="wide")
 
-st.title("GSSC Process Completed | Mismatch TMS/Intella Status | Pending in Offer Issued")
+st.title("RAS Anomaly Cases Detector")
+st.write("GSSC Process Completed | Mismatch TMS/Intella Status | Pending in Offer Issued")
+
+st.write("---")
 st.write("Please upload the required reports to find anomaly cases and their responsible persons.")
 
 # File uploaders
@@ -266,3 +269,4 @@ if file_intella and file_tms_reg and file_tms_ffi:
     except Exception as e:
 
         st.error(f"An unexpected error occurred while processing the files: {e}")
+
