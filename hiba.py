@@ -6,9 +6,9 @@ import re
 from openpyxl.utils import get_column_letter
 
 # Set page configuration
-st.set_page_config(page_title="Data Processing & Anomaly Detection", layout="wide")
+st.set_page_config(page_title="RAS Anomaly Cases Detector", layout="wide")
 
-st.title("Data Processing & Anomaly Detection App")
+st.title("GSSC Process Completed | Mismatch TMS/Intella Status | Pending in Offer Issued")
 st.write("Please upload the required reports to find anomaly cases and their responsible persons.")
 
 # File uploaders
@@ -264,4 +264,5 @@ if file_intella and file_tms_reg and file_tms_ffi:
                         st.success("Processing complete! No anomaly cases were found based on the given rules.")
 
     except Exception as e:
+
         st.error(f"An unexpected error occurred while processing the files: {e}")
