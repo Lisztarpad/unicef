@@ -228,7 +228,6 @@ if file_intella and file_tms_reg and file_tms_ffi:
 
                         # --- Section: Detailed Anomaly List ---
                         st.subheader("🗂️ Detailed Anomaly List")
-                        st.markdown("*Note: Highlighted colors are only visible in this online preview.*")
 
                         styled_anomalies = df_anomalies.style.apply(color_cells, axis=1)
                         st.dataframe(styled_anomalies, use_container_width=True)
@@ -269,4 +268,5 @@ if file_intella and file_tms_reg and file_tms_ffi:
     except Exception as e:
 
         st.error(f"An unexpected error occurred while processing the files: {e}")
+
 
