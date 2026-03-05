@@ -196,6 +196,7 @@ if file_intella and file_tms_reg and file_tms_ffi:
                         st.success(f"Processing complete! Found {len(df_anomalies)} anomaly records.")
 
                         # --- Section: Anomaly Summary ---
+                        st.markdown("---")
                         st.subheader("📊 Anomaly Summary")
                         # Show styled summary in UI
                         st.dataframe(styled_summary, use_container_width=True)
@@ -268,5 +269,6 @@ if file_intella and file_tms_reg and file_tms_ffi:
     except Exception as e:
 
         st.error(f"An unexpected error occurred while processing the files: {e}")
+
 
 
