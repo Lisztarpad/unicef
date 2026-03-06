@@ -8,8 +8,9 @@ from openpyxl.utils import get_column_letter
 # Set page configuration
 st.set_page_config(page_title="Data Processing & Anomaly Detection", layout="wide")
 
-st.title("Data Processing & Anomaly Detection App")
+st.title("RAS Anomaly Cases Detector")
 st.write("Please upload the required reports to find anomaly cases and their responsible persons.")
+st.markdown("---")
 
 # --- Initialize Session State for Duplicate Confirmation ---
 if 'dup_confirmed' not in st.session_state:
@@ -387,3 +388,4 @@ if file_intella and file_tms_reg and file_tms_ffi:
                         
     except Exception as e:
         st.error(f"An unexpected error occurred while processing the files: {e}")
+
