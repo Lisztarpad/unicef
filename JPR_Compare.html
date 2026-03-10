@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JPR Comparator Tool</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        padding: 20px;
+    }
+    h1 { text-align: center; color: #333; }
+    .container {
+        max-width: 1800px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 20px;
+    }
+    .column {
+        display: flex;
+        flex-direction: column;
+    }
+    label {
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #2c3e50;
+    }
+    textarea {
+        flex: 1;
+        height: 650px;
+        resize: vertical;
+        padding: 10px;
+        font-family: Consolas, monospace;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .output-container {
+        position: relative;
+    }
+    .output-container textarea {
+        background: #f8f9fa;
+        padding-right: 70px; /* 给复制按钮留空间 */
+    }
+    .copy-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        padding: 6px 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10;
+    }
+    .copy-btn:hover { background: #218838; }
+    .copy-btn.copied {
+        background: #17a2b8;
+    }
+    .export-btn {
+        margin: 30px auto;
+        display: block;
+        padding: 12px 30px;
+        font-size: 16px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .export-btn:hover { background: #0056b3; }
+    footer {
+        text-align: center;
+        margin-top: 20px;
+        color: #777;
+        font-size: 0.9em;
+    }
+</style>
+</head>
+<body>
+
+<h1>SLA&Tracker Comparator with JPR</h1>
+
+<div class="container">
+    <!-- 1. SLA -->
+    <div class="column">
+        <label for="sla">SLA (one item per line)</label>
+        <textarea id="sla" placeholder="Enter SLA items..."></textarea>
+    </div>
+
+    <!-- 2. Tracker -->
+    <div class="column">
+        <label for="tracker">Tracker (one item per line)</label>
+        <textarea id="tracker" placeholder="Enter Tracker items..."></textarea>
+    </div>
+
+    <!-- 3. In Tracker not in SLA -->
+    <div class="column">
+        <div class="output-container">
+            <label>in Tracker not in SLA</label>
+            <textarea id="trackerOnly" readonly></textarea>
+            <button class="copy-btn" onclick="copyColumn('trackerOnly')">Copy</button>
+        </div>
+    </div>
+
+    <!-- 4. In SLA not in Tracker -->
+    <div class="column">
+        <div class="output-container">
+            <label>in SLA not in Tracker</label>
+            <textarea id="slaOnly" readonly></textarea>
+            <button class="copy-btn" onclick="copyColumn('slaOnly')">Copy</button>
+        </div>
+    </div>
+
+    <!-- 5. In both -->
+    <div class="column">
+        <div class="output-container">
+            <label>in both SLA and Tracker</label>
+            <textarea id="both" readonly></textarea>
+            <button class="copy-btn" onclick="copyColumn('both')">Copy</button>
+        </div>
+    </div>
+
+    <!-- 6. Union -->
+    <div class="column">
+        <div class="output-container">
+            <label>Glue two columns<br><small>(SLA ∪ Tracker)</small></label>
+            <textarea id="union" readonly></textarea>
+            <button class="copy-btn" onclick="copyColumn('union')">Copy</button>
+        </div>
+    </div>
+</div>
+
+<button class="export-btn" onclick="exportToCSV()">Export All Columns to CSV</button>
+
+<footer>Real-time calculation · One-click copy per column · One-click CSV export</footer>
+
+<script>
+function normalize(text) {
+    return text.split('\n').map(l => l.trim()).filter(l => l !== '');
+}
+function unique(arr) { return [...new Set(arr)]; }
+
+function updateResults() {
+    const slaSet     = new Set(unique(normalize(document.getElementById('sla').value)));
+    const trackerSet = new Set(unique(normalize(document.getElementById('tracker').value)));
+
+    const trackerOnly = [...trackerSet].filter(x => !slaSet.has(x)).sort();
+    const slaOnly     = [...slaSet].filter(x => !trackerSet.has(x)).sort();
+    const both        = [...slaSet].filter(x => trackerSet.has(x)).sort();
+    const unionSet    = [...new Set([...slaSet, ...trackerSet])].sort();
+
+    document.getElementById('trackerOnly').value = trackerOnly.join('\n');
+    document.getElementById('slaOnly').value     = slaOnly.join('\n');
+    document.getElementById('both').value        = both.join('\n');
+    document.getElementById('union').value       = unionSet.join('\n');
+}
+
+document.getElementById('sla').addEventListener('input', updateResults);
+document.getElementById('tracker').addEventListener('input', updateResults);
+updateResults();
+
+// ====================
+// 一键复制功能
+// ====================
+function copyColumn(id) {
+    const textarea = document.getElementById(id);
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // 移动端兼容
+    navigator.clipboard.writeText(textarea.value).then(() => {
+        const btn = textarea.parentElement.querySelector('.copy-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('copied');
+        }, 1500);
+    }).catch(err => {
+        alert('Copy failed: ' + err);
+    });
+}
+
+// ====================
+// CSV 导出（保持不变）
+// ====================
+function exportToCSV() {
+    const cols = [
+        { name: "SLA",                     data: normalize(document.getElementById('sla').value) },
+        { name: "Tracker",                 data: normalize(document.getElementById('tracker').value) },
+        { name: "in Tracker not in SLA",   data: normalize(document.getElementById('trackerOnly').value) },
+        { name: "in SLA not in Tracker",   data: normalize(document.getElementById('slaOnly').value) },
+        { name: "in both SLA and Tracker", data: normalize(document.getElementById('both').value) },
+        { name: "Glue two columns (Union)",data: normalize(document.getElementById('union').value) }
+    ];
+
+    const maxRows = Math.max(...cols.map(c => c.data.length));
+    let csvRows = [];
+    csvRows.push(cols.map(c => `"${c.name}"`).join(','));
+
+    for (let i = 0; i < maxRows; i++) {
+        const row = cols.map(col => {
+            const val = i < col.data.length ? col.data[i] : '';
+            return `"${val.replace(/"/g, '""')}"`;
+        });
+        csvRows.push(row.join(','));
+    }
+
+    const csvContent = csvRows.join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SLA_vs_Tracker_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+
+</body>
+</html>
