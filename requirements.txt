@@ -3,3 +3,6 @@ pandas
 xlsxwriter
 openpyxl
 matplotlib
+pymupdf
+PIL
+uuid
