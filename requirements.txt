@@ -4,5 +4,5 @@ xlsxwriter
 openpyxl
 matplotlib
 pymupdf
-PIL
+Pillow
 uuid
